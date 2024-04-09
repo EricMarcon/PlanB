@@ -1802,6 +1802,18 @@ une mesure de diamètre pour un arbre.</p>
 <pre><code>## [1] &quot;Eperua falcata&quot;          &quot;Eschweilera sagotiana&quot;  
 ## [3] &quot;Indet.Indet. Indet.&quot;     &quot;Lecythis persistens&quot;    
 ## [5] &quot;Hymenopus heteromorphus&quot; &quot;Oxandra asbeckii&quot;</code></pre>
+<p>Combien y a-t-il d’arbres dans la parcelle
+<span style="white-space:nowrap">15 ?</span></p>
+<pre class="r"><code>paracou_2022_p15_bota_sp_abd_dec |&gt; 
+  # pull génère un vecteur
+  pull(abondance) |&gt; 
+  # Somme
+  sum()</code></pre>
+<pre><code>## [1] 4214</code></pre>
+<p>Remarque : le code classique peut être plus efficace pour des calculs
+simples :</p>
+<pre class="r"><code>sum(paracou$Plot == 15 &amp; paracou$CensusYear == 2022)</code></pre>
+<pre><code>## [1] 4214</code></pre>
 </div>
 <div id="joindre-plusieurs-tables" class="section level2">
 <h2>Joindre plusieurs tables</h2>

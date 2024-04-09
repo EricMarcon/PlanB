@@ -147,6 +147,22 @@ paracou_2022_p15_bota_sp_abd_dec |>
   head()
 ```
 
+Combien y a-t-il d'arbres dans la parcelle 15?
+
+```{r}
+paracou_2022_p15_bota_sp_abd_dec |> 
+  # pull génère un vecteur
+  pull(abondance) |> 
+  # Somme
+  sum()
+```
+
+Remarque : le code classique peut être plus efficace pour des calculs simples:
+
+```{r}
+sum(paracou$Plot == 15 & paracou$CensusYear == 2022)
+```
+
 
 ## Joindre plusieurs tables
 
