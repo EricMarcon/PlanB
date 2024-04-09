@@ -17,6 +17,9 @@ knitr::opts_chunk$set(
 
 Apprendre à manipuler les données avec le tidyverse.
 
+[Référence](https://r4ds.hadley.nz/):  Wickham, H.; Grolemund, G. R for Data Science (2nd ed.); O’Reilly Media, 2023.
+
+
 ```{r}
 library("tidyverse")
 ```
