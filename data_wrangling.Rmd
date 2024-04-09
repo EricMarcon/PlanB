@@ -1,7 +1,12 @@
 ---
 title: "Gestion des données"
 date: "`r Sys.Date()`"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: "show"
+    pandoc_args: "--lua-filter=fr-nbsp.lua"
 ---
 
 ```{r setup, include=FALSE}
