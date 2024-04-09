@@ -1,0 +1,359 @@
+---
+title: "Gestion des données"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE
+)
+```
+
+
+
+# Objectifs
+
+Apprendre à manipuler les données avec le tidyverse.
+
+```{r}
+library("tidyverse")
+```
+
+
+# Lecture des données
+
+## Lecture d'un fichier
+
+Fichier `.csv` au format anglo-saxon (séparateur décimal : `.`):
+
+```{r}
+# Parcelle 15
+read_csv("data/2023-09-29_ParacouP15AllYears.csv")
+```
+
+On obtient un tibble.
+
+
+## Consolidation de toutes les données
+
+Tous les tableaux ont le même format : on peut les empiler avec `bind_rows()`.
+
+```{r}
+# Parcelle 13
+read_csv("data/2023-09-29_ParacouP13AllYears.csv") |> 
+  bind_rows(read_csv("data/2023-09-29_ParacouP14AllYears.csv")) |> 
+  bind_rows(read_csv("data/2023-09-29_ParacouP15AllYears.csv")) |> 
+  bind_rows(read_csv("data/2023-09-29_ParacouP16AllYears.csv")) |> 
+  print() ->
+  paracou
+```
+
+Afficher le tableau, comprendre les colonnes.
+Chaque ligne contient une mesure de diamètre pour un arbre.
+
+
+# Manipuler les données
+
+Quelles sont les espèces les plus fréquentes ?
+
+
+## Filtrer les lignes
+
+Inventaire 2022:
+
+```{r}
+paracou |> 
+  filter(CensusYear == 2022) |> 
+  print() ->
+  paracou_2022
+```
+
+Parcelle 15:
+
+```{r}
+paracou_2022 |> 
+  filter(Plot == 15) |> 
+  print() ->
+  paracou_2022_p15
+```
+
+
+
+## Sélectionner des colonnes
+
+Données botaniques:
+
+```{r}
+paracou_2022_p15 |> 
+  select(idTree, Family:Species, Plot) |> 
+  print() ->
+  paracou_2022_p15_bota
+```
+
+
+## Ajouter une colonne
+
+Nom complet de l'espèce:
+
+```{r}
+paracou_2022_p15_bota |> 
+  mutate(espece = paste(Genus, Species)) |> 
+  print() ->
+  paracou_2022_p15_bota_sp
+```
+
+## Résumer
+
+Combien d'arbres par espèce ?
+
+```{r}
+paracou_2022_p15_bota_sp |> 
+  group_by(espece) |> 
+  summarise(abondance = n()) |> 
+  print() ->
+  paracou_2022_p15_bota_sp_abd
+```
+
+## Trier
+
+Par abondance décroissante:
+
+```{r}
+paracou_2022_p15_bota_sp_abd |> 
+  arrange(desc(abondance)) |> 
+  print() ->
+  paracou_2022_p15_bota_sp_abd_dec
+```
+
+## Extraire une variable
+
+Vecteur des espèces
+
+```{r}
+paracou_2022_p15_bota_sp_abd_dec |> 
+  # pull génère un vecteur
+  pull(espece) |> 
+  # Affichage des premiers éléments
+  head()
+```
+
+
+## Joindre plusieurs tables
+
+Objectif : assembler les colonnes de plusieurs tables, pour les mêmes observations, grâce à une ou plusieurs colonnes d'identification.
+
+Exemple : quelles espèces sont parmi les plus fréquentes à la fois dans les parcelles 13 et 15 ?
+
+```{r}
+paracou_2022 |> 
+  # Données bota et parcelle
+  select(idTree, Family:Species, Plot) |> 
+  # Création de la colonne espece
+  mutate(espece = paste(Genus, Species)) |> 
+  # Regroupement par parcelle et espèce
+  group_by(Plot, espece) |> 
+  summarise(abondance = n()) |> 
+  # Abondance décroissante
+  arrange(desc(abondance)) |> 
+  # Suppression des groupes pour les traitements suivants
+  ungroup() ->
+  # Espèces par parcelle en 2022
+  paracou_2022_bota_dec
+# Parcelle 13
+paracou_2022_bota_dec |> 
+  # Filtrage de la parcelle
+  filter(Plot == 13) |> 
+  # Renommer la variable abondance
+  rename(abondance_p13 = abondance) |> 
+  # Supprimer la variable Plot
+  select(!Plot) |> 
+  # Espèces les plus abondantes
+  head(n = 5) |> 
+  print() ->
+  paracou_2022_bota_p13_abd
+# Parcelle 15
+paracou_2022_bota_dec |> 
+  # Filtrage de la parcelle
+  filter(Plot == 15) |> 
+  # Renommer la variable abondance
+  rename(abondance_p15 = abondance) |> 
+  # Supprimer la variable Plot
+  select(!Plot) |> 
+  # Espèces les plus abondantes
+  head(n = 5) |> 
+  print() ->
+  paracou_2022_bota_p15_abd
+
+# Jointure
+paracou_2022_bota_p13_abd |> 
+  inner_join(paracou_2022_bota_p15_abd)
+```
+
+Voir `?inner_join` pour les jointures externes.
+
+
+## Tableau long ou large
+
+Les arbres sont mesurés plusieurs fois:
+
+```{r}
+# Premier arbre du jeu de données
+paracou |> 
+  head(n = 1) |> 
+  pull(idTree)  |> 
+  print() ->
+  id_premier
+# Enregistrements correspondants
+paracou |> 
+  filter(idTree == id_premier) |> 
+  # Variables utiles : identifiant de l'arbre, année et mesure
+  select(idTree, CensusYear, CircCorr) |> 
+  print() ->
+  paracou_premier
+```
+
+Cette organisation des données en liste est un tableau *long*.
+
+L'alternative est un tableau *large*, dans lequel chaque année est une colonne:
+
+```{r}
+paracou_premier |> 
+  pivot_wider(
+    names_from = CensusYear,
+    values_from = CircCorr
+  )
+```
+Les graphiques ggplot nécessitent des tableaux longs.
+Certains calculs sont plus simples avec des tableaux larges, par exemple les accroissements.
+
+Exemple : accroissement moyen des arbres de la parcelle 15 entre la 1991 et 2022 (31 ans) :
+
+```{r}
+paracou |> 
+  # parcelle 15 |> 
+  filter(Plot == 15) |> 
+  # Colonnes de mesure
+  select(idTree, CensusYear, CircCorr) |> 
+  # Tableau large
+  pivot_wider(
+    names_from = CensusYear,
+    values_from = CircCorr
+  ) |> 
+  # Années 1991 et 2022
+  select(idTree, `1991`, `2022`) |> 
+  # Calcul de l'accroissement
+  mutate(accroissement = `2022` - `1991`) |> 
+  # Elimination des données manquantes
+  filter(!is.na(accroissement)) |> 
+  # Vecteur des accroissements
+  pull(accroissement) |>
+  # Moyenne
+  mean() %>%
+  # Division (pas très élégant, utiliser plutôt mutate avant)
+  `/`(31)
+```
+La croissance moyenne est d'un millimètre de diamètre par an (0,33 cm de circonférence).
+
+
+# Flux de travail
+
+Ecriture d'un pipeline complet, commenté, sans variables intermédiaire.
+
+Quelles sont les espèces les plus abondantes dans la parcelle 15 de Paracou ?
+
+```{r}
+# Lecture et aggrégation des fichiers de données
+read_csv("data/2023-09-29_ParacouP13AllYears.csv") |> 
+  bind_rows(read_csv("data/2023-09-29_ParacouP14AllYears.csv")) |> 
+  bind_rows(read_csv("data/2023-09-29_ParacouP15AllYears.csv")) |> 
+  bind_rows(read_csv("data/2023-09-29_ParacouP16AllYears.csv")) |> 
+  # Filtrage de la parcelle 15 en 2022
+  filter(Plot == 15 & CensusYear == 2022) |> 
+  # Sélection des données botaniques et de parcelle
+  select(idTree, Family:Species, Plot) |> 
+  # Création de la variable espèce
+  mutate(espece = paste(Genus, Species)) |> 
+  # Comptage des arbres
+  group_by(espece) |> 
+  summarise(abondance = n()) |> 
+  # Tri par abondance décroissante
+  arrange(desc(abondance)) |> 
+  # Affichage des 5 premières
+  head(n = 5)
+```
+
+Le flux s'écrit progressivement, donc lentement, ligne par ligne.
+
+
+# Graphiques
+
+Avec ggplot2.
+La variable d'entrée est un dataframe, qui peut provenir du flux de travail.
+
+Affichage d'une courbe rang-abondance (diagramme de Whittaker) :
+
+```{r}
+paracou_2022_p15_bota_sp_abd_dec %>% 
+  # Ajout de la variable rang
+  mutate(rang = seq_len(nrow(.))) |> 
+  # Graphique rang - abondance
+  ggplot(aes(x = rang, y = abondance)) +
+  # Courbe
+  geom_line() +
+  # Points rouges, petits, pour visualiser les espèces
+  geom_point(col = "red", size = .5) +
+  # Abondances en log
+  scale_y_log10() +
+  labs(
+    title = "Courbe rang-abondance des espèces de la parcelle 15 de Paracou",
+    x = "Rang", 
+    y = "Abondance"
+  )
+```
+
+
+# Exercices
+
+En moins de trois minutes, écrire le flux complet pour tracer la courbe rang-abondance globale des 4 parcelles de Paracou.
+
+En prenant plus de temps, faire un histogramme de l'abondance des espèces les plus fréquentes, c'est à dire celles dont la fréquence est supérieure à 1%.
+
+Aides :
+
+- utiliser `filter()` pour filtrer les espèces abondantes,
+- le code pour créer un diagramme bâton est le suivant:
+
+```{r}
+# Parcelle 15, abondances décroissantes
+paracou_2022_p15_bota_sp_abd |> 
+  # 10 espèces les plus abondantes
+  head(n = 10) |> 
+  # Graphique
+  ggplot() +
+  # Bâtons dont la hauteur est la valeur de y
+  geom_bar(
+    # Statistique de calcul des bâtons: prendre seulement la valeur
+    stat = "identity", 
+    aes(
+      # Abscisse classée par ordre décroissant des abondances
+      x = fct_rev(fct_reorder(espece, abondance)), 
+      y = abondance,
+      # Couleur des bâtons, avec légende
+      fill = espece
+    )
+  ) +
+  # Étiquette des x inclinées et décalées
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  # Étiquettes diverses
+  labs(
+    x = "Espèce", 
+    y = "Abondance", 
+    fill = "Espèce"
+  )
+```
+
+
+
+
